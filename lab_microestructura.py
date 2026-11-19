@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.express as px
 from pathlib import Path
 
 # Configuración de página independiente
@@ -143,17 +144,49 @@ def main():
         with tab1:
             st.markdown("#### Función de Impulso-Respuesta Acumulada (Choque de +0.10 BOB en el Líder)")
             top5_lista = lideres_robustos.head(5)['Vendedor'].tolist()
-            sub_irf = irf[(irf['Bloque'] == bloque_actual) & (irf['Vendedor'].isin(top5_lista))]
-            
-            fig_irf, ax_irf = plt.subplots(figsize=(10, 4.2))
-            sns.lineplot(data=sub_irf, x='Dia_Horizonte', y='Respuesta_Acumulada_BOB', hue='Vendedor', marker='o', linewidth=2.2, ax=ax_irf)
-            ax_irf.axhline(0.10, color='gray', linestyle='--', label='Choque Inicial (+0.10 BOB)')
-            ax_irf.axhline(0.0, color='black', linewidth=0.8)
-            ax_irf.set_xlabel("Días después del choque (Horizonte t + h)")
-            ax_irf.set_ylabel("Respuesta Acumulada del Mercado (BOB)")
-            ax_irf.grid(alpha=0.3)
-            ax_irf.legend()
-            st.pyplot(fig_irf)
+            sub_irf = irf[
+                (irf['Bloque'] == bloque_actual) & 
+                (irf['Vendedor'].isin(top5_lista))
+            ].copy()
+
+            fig_irf = px.line(
+                sub_irf,
+                x="Dia_Horizonte",
+                y="Respuesta_Acumulada_BOB",
+                color="Vendedor",
+                markers=True,
+                title=f"Respuesta Acumulada del Mercado Excluyente ({bloque_actual})",
+                labels={
+                    "Dia_Horizonte": "Días después del choque (Horizonte t + h)",
+                    "Respuesta_Acumulada_BOB": "Respuesta Acumulada (BOB)",
+                    "Vendedor": "Vendedor Líder"
+                },
+                hover_data={
+                    "Dia_Horizonte": True,
+                    "Respuesta_Acumulada_BOB": ":.4f",
+                    "Respuesta_Diaria_BOB": ":.4f",
+                    "Vendedor": True
+                }
+            )
+
+            # Línea de referencia del choque inicial (+0.10 BOB) y línea cero
+            fig_irf.add_hline(
+                y=0.10,
+                line_dash="dash",
+                line_color="gray",
+                annotation_text="Choque Inicial (+0.10 BOB)",
+                annotation_position="top left"
+            )
+            fig_irf.add_hline(y=0.0, line_width=1, line_color="black")
+
+            fig_irf.update_layout(
+                xaxis=dict(dtick=1),
+                hovermode="x unified",
+                legend_title_text="Vendedor Líder",
+                height=450
+            )
+
+            st.plotly_chart(fig_irf, use_container_width=True)
 
         with tab2:
             col_hm, col_fevd = st.columns(2)
